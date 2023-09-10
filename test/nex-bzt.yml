@@ -1,4 +1,3 @@
-###
 # How to run:
 #    1. debug/dev in Jmeter:  bzt nex-bzt.yml -gui
 #    2. perf test          :  bzt nex-bzt.yml -report
@@ -108,6 +107,24 @@ scenarios:
     - if: '"${order_id}" == "NOT_FOUND"'
       then:
         - action: continue
+
+    # 5. Delete Product
+    - url: /products/${product_id}
+      label: product-delete
+      think-time: uniform(0s, 0s)
+      method: DELETE
+        
+      assert:
+      - contains:
+        - 204
+        subject: http-code
+        not: false
+
+    # 6. List All Orders
+    - url: /orders/all
+      label: list-all-orders
+      think-time: uniform(0s, 0s)
+      method: GET
   
 reporting:
 - module: final-stats

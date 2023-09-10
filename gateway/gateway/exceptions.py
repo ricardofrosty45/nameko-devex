@@ -27,4 +27,6 @@ class OrderNotFound(Exception):
 
 @remote_error('products.exceptions.NotFound')
 class ProductNotFound(Exception):
-    pass
+    def __init__(self, message="Product not found"):
+        self.message = message
+        super().__init__(self.message)

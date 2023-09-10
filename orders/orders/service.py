@@ -1,8 +1,11 @@
 from nameko.events import EventDispatcher
-from nameko.rpc import rpc
+from nameko.rpc import rpc, RpcProxy
 from nameko_sqlalchemy import DatabaseSession
+from sqlalchemy.exc import IntegrityError
+from marshmallow import ValidationError
+from nameko.exceptions import BadRequest
 
-from orders.exceptions import NotFound
+from orders.exceptions import NotFound, InvalidData, InvalidInput
 from orders.models import DeclarativeBase, Order, OrderDetail
 from orders.schemas import OrderSchema
 
@@ -18,51 +21,86 @@ class OrdersService:
         order = self.db.query(Order).get(order_id)
 
         if not order:
-            raise NotFound('Order with id {} not found'.format(order_id))
+            raise NotFound(f'Order with id {order_id} not found')
 
         return OrderSchema().dump(order).data
+    
+    @rpc
+    def list_all_orders(self, filter=None):
+        try:
+            query = self.db.query(Order)
+
+            if filter:
+                query = query.filter_by(**filter)
+
+            orders = query.all()
+        except Exception as e:
+            raise BadRequest(f"Failed to retrieve orders: {str(e)}")
+
+        return [OrderSchema().dump(order).data for order in orders]
 
     @rpc
     def create_order(self, order_details):
-        order = Order(
-            order_details=[
-                OrderDetail(
-                    product_id=order_detail['product_id'],
-                    price=order_detail['price'],
-                    quantity=order_detail['quantity']
-                )
-                for order_detail in order_details
-            ]
-        )
-        self.db.add(order)
-        self.db.commit()
+        try:
+            order = Order(
+                order_details=[
+                    OrderDetail(
+                        product_id=order_detail['product_id'],
+                        price=order_detail['price'],
+                        quantity=order_detail['quantity']
+                    )
+                    for order_detail in order_details
+                ]
+            )
+            self.db.add(order)
+            self.db.commit()
 
-        order = OrderSchema().dump(order).data
+            order = OrderSchema().dump(order).data
 
-        self.event_dispatcher('order_created', {
-            'order': order,
-        })
+            self.event_dispatcher('order_created', {
+                'order': order,
+            })
 
-        return order
+            return order
+
+        except IntegrityError as e:
+            raise InvalidData(f'Invalid data: {str(e)}')
+        except ValidationError as e:
+            raise InvalidData(f'Validation error: {str(e)}')
 
     @rpc
     def update_order(self, order):
-        order_details = {
-            order_details['id']: order_details
-            for order_details in order['order_details']
-        }
+        try:
+            order_details = {
+                order_detail['id']: order_detail
+                for order_detail in order['order_details']
+            }
 
-        order = self.db.query(Order).get(order['id'])
+            order = self.db.query(Order).get(order['id'])
 
-        for order_detail in order.order_details:
-            order_detail.price = order_details[order_detail.id]['price']
-            order_detail.quantity = order_details[order_detail.id]['quantity']
+            for order_detail in order.order_details:
+                order_detail.price = order_details[order_detail.id]['price']
+                order_detail.quantity = order_details[order_detail.id]['quantity']
 
-        self.db.commit()
-        return OrderSchema().dump(order).data
+            self.db.commit()
+            return OrderSchema().dump(order).data
+
+        except NotFound as e:
+            raise e
+        except IntegrityError as e:
+            self.db.rollback()
+            raise InvalidData(f'Invalid data: {str(e)}')
+        except ValidationError as e:
+            self.db.rollback()
+            raise InvalidData(f'Validation error: {str(e)}')
 
     @rpc
     def delete_order(self, order_id):
         order = self.db.query(Order).get(order_id)
+
+        if not order:
+            raise NotFound(f'Order with id {order_id} not found')
+
         self.db.delete(order)
         self.db.commit()
+        

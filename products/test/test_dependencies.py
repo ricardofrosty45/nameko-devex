@@ -2,7 +2,7 @@ import pytest
 from mock import Mock
 
 from nameko import config
-from products.dependencies import Storage
+from products.dependencies import Storage, NotFound
 
 
 @pytest.fixture
@@ -62,3 +62,17 @@ def test_decrement_stock(storage, create_product, redis_client):
     assert b'10' == product_one[b'in_stock']
     assert b'7' == product_two[b'in_stock']
     assert b'12' == product_three[b'in_stock']
+    
+def test_delete_product_by_id(storage, create_product, redis_client):
+    create_product(id='the_odyssey')
+    stored_product = redis_client.hgetall('products:the_odyssey')
+    assert stored_product
+    storage.delete_product_by_id('the_odyssey')
+    stored_product = redis_client.hgetall('products:the_odyssey')
+    assert not stored_product
+
+
+def test_delete_product_by_id_not_found(storage):
+    with pytest.raises(NotFound) as exc:
+        storage.delete_product_by_id('the_odyssey_i_do_not_exist')
+    assert 'Product ID does not exist' == exc.value.args[0]

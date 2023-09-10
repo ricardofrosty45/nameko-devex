@@ -6,6 +6,7 @@ from nameko.exceptions import BadRequest
 from nameko.rpc import RpcProxy
 from werkzeug import Response
 
+
 from gateway.entrypoints import http
 from gateway.exceptions import OrderNotFound, ProductNotFound
 from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema
@@ -28,7 +29,7 @@ class GatewayService(object):
     def get_product(self, request, product_id):
         """Gets product by `product_id`
         """
-        product = self.products_rpc.get(product_id)
+        product = self.products_rpc.get_product(product_id)
         return Response(
             ProductSchema().dumps(product).data,
             mimetype='application/json'
@@ -61,15 +62,12 @@ class GatewayService(object):
         schema = ProductSchema(strict=True)
 
         try:
-            # load input data through a schema (for validation)
-            # Note - this may raise `ValueError` for invalid json,
-            # or `ValidationError` if data is invalid.
             product_data = schema.loads(request.get_data(as_text=True)).data
         except ValueError as exc:
             raise BadRequest("Invalid json: {}".format(exc))
 
         # Create the product
-        self.products_rpc.create(product_data)
+        self.products_rpc.create_product(product_data)
         return Response(
             json.dumps({'id': product_data['id']}), mimetype='application/json'
         )
@@ -77,9 +75,6 @@ class GatewayService(object):
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
     def get_order(self, request, order_id):
         """Gets the order details for the order given by `order_id`.
-
-        Enhances the order details with full product details from the
-        products-service.
         """
         order = self._get_order(order_id)
         return Response(
@@ -88,13 +83,10 @@ class GatewayService(object):
         )
 
     def _get_order(self, order_id):
-        # Retrieve order data from the orders service.
-        # Note - this may raise a remote exception that has been mapped to
-        # raise``OrderNotFound``
         order = self.orders_rpc.get_order(order_id)
 
         # Retrieve all products from the products service
-        product_map = {prod['id']: prod for prod in self.products_rpc.list()}
+        product_map = {prod['id']: prod for prod in self.products_rpc.list_products()}
 
         # get the configured image root
         image_root = config['PRODUCT_IMAGE_ROOT']
@@ -108,6 +100,7 @@ class GatewayService(object):
             item['image'] = '{}/{}.jpg'.format(image_root, product_id)
 
         return order
+
 
     @http(
         "POST", "/orders",
@@ -132,43 +125,73 @@ class GatewayService(object):
                     },
                 ]
             }
-
-
-        The response contains the new order ID in a json document ::
-
-            {"id": 1234}
-
         """
 
         schema = CreateOrderSchema(strict=True)
 
         try:
-            # load input data through a schema (for validation)
-            # Note - this may raise `ValueError` for invalid json,
-            # or `ValidationError` if data is invalid.
             order_data = schema.loads(request.get_data(as_text=True)).data
         except ValueError as exc:
             raise BadRequest("Invalid json: {}".format(exc))
-
-        # Create the order
-        # Note - this may raise `ProductNotFound`
+        
         id_ = self._create_order(order_data)
         return Response(json.dumps({'id': id_}), mimetype='application/json')
 
     def _create_order(self, order_data):
-        # check order product ids are valid
-        valid_product_ids = {prod['id'] for prod in self.products_rpc.list()}
+        valid_product_ids = {prod['id'] for prod in self.products_rpc.list_products()}
         for item in order_data['order_details']:
             if item['product_id'] not in valid_product_ids:
                 raise ProductNotFound(
                     "Product Id {}".format(item['product_id'])
                 )
 
-        # Call orders-service to create the order.
-        # Dump the data through the schema to ensure the values are serialized
-        # correctly.
+
         serialized_data = CreateOrderSchema().dump(order_data).data
         result = self.orders_rpc.create_order(
             serialized_data['order_details']
         )
         return result['id']
+    
+    @http(
+        "DELETE", "/products/<string:product_id>",
+        expected_exceptions=ProductNotFound
+    )
+    def delete_product(self, request, product_id):
+        """Deletes a product by `product_id`.
+        """
+        try:
+           self.products_rpc.delete_product(product_id)
+           return Response(status=204)
+        except ProductNotFound as exc:
+          error_message = {
+              "error": "ProductNotFound",
+              "message": str(exc)
+          }
+          return Response(
+            json.dumps(error_message),
+            status=404,
+            mimetype="application/json"
+          )
+          
+    @http("GET", "/orders/all")
+    def list_all_orders(self, request):
+        """
+        Lists orders with optional filters.
+        """
+        try:
+            filter = request.args.to_dict()
+            orders = self.orders_rpc.list_all_orders(filter=filter)
+            return Response(
+                json.dumps(orders),
+                mimetype='application/json'
+            )
+        except BadRequest as exc:
+            error_message = {
+                "error": "BadRequest",
+                "message": str(exc)
+            }
+            return Response(
+                json.dumps(error_message),
+                status=400,
+                mimetype="application/json"
+            )

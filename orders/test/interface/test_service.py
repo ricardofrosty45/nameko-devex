@@ -3,8 +3,11 @@ import pytest
 from mock import call
 from nameko.exceptions import RemoteError
 
+from nameko.testing.services import entrypoint_hook
 from orders.models import Order, OrderDetail
 from orders.schemas import OrderSchema, OrderDetailSchema
+
+from orders.service import OrdersService
 
 
 @pytest.fixture
@@ -13,6 +16,11 @@ def order(db_session):
     db_session.add(order)
     db_session.commit()
     return order
+
+
+@pytest.fixture
+def orders_service():
+    return OrdersService()
 
 
 @pytest.fixture
@@ -32,6 +40,22 @@ def order_details(db_session, order):
 def test_get_order(orders_rpc, order):
     response = orders_rpc.get_order(1)
     assert response['id'] == order.id
+    
+    
+    
+def test_list_orders(orders_service, db_session):
+    order1 = Order()
+    db_session.add(order1)
+    order2 = Order()
+    db_session.add(order2)
+    db_session.commit()
+    
+    with entrypoint_hook(orders_service, 'list_all_orders') as list_all_orders:
+        result = list_all_orders()
+
+
+    assert result[0]['id'] == order1.id
+    assert result[1]['id'] == order2.id
 
 
 @pytest.mark.usefixtures('db_session')
