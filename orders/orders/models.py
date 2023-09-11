@@ -6,7 +6,6 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-
 class Base(object):
     created_at = Column(
         DateTime,
@@ -21,7 +20,10 @@ class Base(object):
     )
 
 
+
+
 DeclarativeBase = declarative_base(cls=Base)
+
 
 
 class Order(DeclarativeBase):

@@ -26,14 +26,18 @@ class OrdersService:
         return OrderSchema().dump(order).data
     
     @rpc
-    def list_all_orders(self, filter=None):
+    def list_all_orders(self, filter=None, page=1, per_page=40):
         try:
-            query = self.db.query(Order)
+            with self.db.transaction:
+                query = self.db.query(Order)
 
-            if filter:
-                query = query.filter_by(**filter)
+                if filter:
+                    query = query.filter_by(**filter)
 
-            orders = query.all()
+                offset = (page - 1) * per_page
+
+                
+                orders = query.offset(offset).limit(per_page).yield_per(80).all()
         except Exception as e:
             raise BadRequest(f"Failed to retrieve orders: {str(e)}")
 

@@ -40,6 +40,14 @@ def upgrade():
             name="fk_order_details_orders"
         ),
     )
+    
+    
+    # Create an index on the "order_id" column of the "order_details" table
+    op.create_index(
+        "idx_order_details_order_id",
+        "order_details",
+        ["order_id"]
+    )
 
 
 def downgrade():

@@ -28,12 +28,17 @@ class StorageWrapper:
         return 'products:{}'.format(product_id)
 
     def _from_hash(self, document):
+        try:
+            product_id = document[b'id'].decode('utf-8')
+        except KeyError:
+            product_id = None
+
         return {
-            'id': document[b'id'].decode('utf-8'),
-            'title': document[b'title'].decode('utf-8'),
-            'passenger_capacity': int(document[b'passenger_capacity']),
-            'maximum_speed': int(document[b'maximum_speed']),
-            'in_stock': int(document[b'in_stock'])
+            'id': product_id,
+            'title': document.get(b'title', b'').decode('utf-8'),
+            'passenger_capacity': int(document.get(b'passenger_capacity', 0)),
+            'maximum_speed': int(document.get(b'maximum_speed', 0)),
+            'in_stock': int(document.get(b'in_stock', 0))
         }
 
     def get(self, product_id):
