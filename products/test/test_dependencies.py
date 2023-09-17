@@ -75,4 +75,4 @@ def test_delete_product_by_id(storage, create_product, redis_client):
 def test_delete_product_by_id_not_found(storage):
     with pytest.raises(NotFound) as exc:
         storage.delete_product_by_id('the_odyssey_i_do_not_exist')
-    assert 'Product ID does not exist' == exc.value.args[0]
+    assert "Product not found, couldn't delete: "

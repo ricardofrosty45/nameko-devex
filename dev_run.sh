@@ -37,7 +37,7 @@ connection_pool = pool.SimpleConnectionPool(
     user='postgres',
     password='postgres',
     host=hostname,
-    port=port,
+    port=5432,
     dbname=database
 )
 

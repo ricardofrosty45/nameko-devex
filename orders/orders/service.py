@@ -104,7 +104,10 @@ class OrdersService:
 
         if not order:
             raise NotFound(f'Order with id {order_id} not found')
+ 
+       
+        for order_detail in order.order_details:
+           self.db.delete(order_detail)
 
         self.db.delete(order)
         self.db.commit()
-        

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, status, HTTPException
+from fastapi import APIRouter, status, HTTPException,Response
 from fastapi.params import Depends
 from gateapi.api.dependencies import get_rpc
 from gateapi.api import schemas
 from .exceptions import ProductNotFound
+
 
 router = APIRouter(
     prefix = "/products",
@@ -13,7 +14,7 @@ router = APIRouter(
 def get_product(product_id: str, rpc = Depends(get_rpc)):
     try: 
         with rpc.next() as nameko:
-            return nameko.products.get(product_id)
+            return nameko.products.get_product(product_id)
     except ProductNotFound as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -23,7 +24,19 @@ def get_product(product_id: str, rpc = Depends(get_rpc)):
 @router.post("", status_code=status.HTTP_200_OK, response_model=schemas.CreateProductSuccess)
 def create_product(request: schemas.Product, rpc = Depends(get_rpc)):
     with rpc.next() as nameko:
-        nameko.products.create(request.dict())
+        nameko.products.create_product(request.dict())
         return {
             "id": request.id
         }
+        
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(product_id: str, rpc=Depends(get_rpc)):
+    try:
+        with rpc.next() as nameko:
+            nameko.products.delete_product(product_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ProductNotFound as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error)
+        )
