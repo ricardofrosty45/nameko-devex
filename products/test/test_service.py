@@ -125,11 +125,9 @@ def test_create_product_validation_error_on_non_nullable_fields(
         {field: ['Field may not be null.']} ==
         exc_info.value.args[0])
 
-
 def test_handle_order_created(
     test_config, products, redis_client, service_container
 ):
-
     dispatch = event_dispatcher()
 
     payload = {

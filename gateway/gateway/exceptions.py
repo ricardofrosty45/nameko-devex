@@ -1,6 +1,5 @@
 from nameko.exceptions import registry
 
-
 def remote_error(exc_path):
     """
     Decorator that registers remote exception with matching ``exc_path``
@@ -14,7 +13,6 @@ def remote_error(exc_path):
 
     return wrapper
 
-
 @remote_error('orders.exceptions.NotFound')
 class OrderNotFound(Exception):
     """
@@ -23,7 +21,6 @@ class OrderNotFound(Exception):
     exception instead.
     """
     pass
-
 
 @remote_error('products.exceptions.NotFound')
 class ProductNotFound(Exception):

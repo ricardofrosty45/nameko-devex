@@ -4,7 +4,6 @@ from mock import call
 
 from gateway.exceptions import OrderNotFound, ProductNotFound
 
-
 class TestGetProduct(object):
     def test_can_get_product(self, gateway_service, web_session):
         gateway_service.products_rpc.get_product.return_value = {

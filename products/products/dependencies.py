@@ -4,9 +4,7 @@ import redis
 
 from products.exceptions import NotFound
 
-
 REDIS_URI_KEY = 'REDIS_URI'
-
 
 class StorageWrapper:
     """
@@ -69,7 +67,6 @@ class StorageWrapper:
             self.client.delete(key)
         else:
             raise NotFound('Product ID {} does not exist'.format(product_id))
-
 
 class Storage(DependencyProvider):
 

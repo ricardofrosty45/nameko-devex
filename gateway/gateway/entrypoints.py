@@ -7,7 +7,6 @@ from werkzeug import Response
 
 from gateway.exceptions import ProductNotFound, OrderNotFound
 
-
 class HttpEntrypoint(HttpRequestHandler):
     """ Overrides `response_from_exception` so we can customize error handling.
     """
@@ -37,6 +36,5 @@ class HttpEntrypoint(HttpRequestHandler):
             status=status_code,
             mimetype='application/json'
         )
-
 
 http = HttpEntrypoint.decorator

@@ -10,7 +10,6 @@ class Product(BaseModel):
     maximum_speed: int
     in_stock: int
 
-
 class CreateOrderDetail(BaseModel):
     product_id: str
     price: float

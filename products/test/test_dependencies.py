@@ -1,9 +1,7 @@
 import pytest
 from mock import Mock
-
 from nameko import config
 from products.dependencies import Storage, NotFound
-
 
 @pytest.fixture
 def storage(test_config):
@@ -12,12 +10,10 @@ def storage(test_config):
     provider.setup()
     return provider.get_dependency({})
 
-
 def test_get_fails_on_not_found(storage):
     with pytest.raises(storage.NotFound) as exc:
         storage.get(2)
     assert 'Product ID 2 does not exist' == exc.value.args[0]
-
 
 def test_get(storage, products):
     product = storage.get('LZ129')
@@ -27,19 +23,14 @@ def test_get(storage, products):
     assert 50 == product['passenger_capacity']
     assert 11 == product['in_stock']
 
-
 def test_list(storage, products):
     listed_products = storage.list()
     assert (
         products == sorted(list(listed_products), key=lambda x: x['id']))
 
-
 def test_create(product, redis_client, storage):
-
     storage.create(product)
-
     stored_product = redis_client.hgetall('products:LZ127')
-
     assert product['id'] == stored_product[b'id'].decode('utf-8')
     assert product['title'] == stored_product[b'title'].decode('utf-8')
     assert product['maximum_speed'] == int(stored_product[b'maximum_speed'])

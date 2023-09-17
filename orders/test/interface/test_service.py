@@ -2,16 +2,10 @@ import pytest
 
 
 from unittest.mock import Mock, call
-
-
-
 from orders.exceptions import NotFound, InvalidData, InvalidInput
-
 from orders.models import Order, OrderDetail
 from orders.schemas import OrderSchema, OrderDetailSchema
-
 from orders.service import OrdersService
-
 
 @pytest.fixture
 def order(db_session):
@@ -19,7 +13,6 @@ def order(db_session):
     db_session.add(order)
     db_session.commit()
     return order
-
 
 @pytest.fixture
 def orders_service():
